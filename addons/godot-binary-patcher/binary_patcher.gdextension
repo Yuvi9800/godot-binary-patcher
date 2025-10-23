@@ -1,0 +1,11 @@
+[configuration]
+
+entry_symbol = "godot_binary_patcher_init"
+compatibility_minimum = "4.2"
+
+[libraries]
+
+linux.x86_64 = "res://addons/godot-binary-patcher/bin/libgodot_binary_patcher.so"
+windows.x86_64 = "res://addons/godot-binary-patcher/bin/libgodot_binary_patcher.dll"
+macos.x86_64 = "res://addons/godot-binary-patcher/bin/libgodot_binary_patcher.x86_64.dylib"
+macos.arm64 = "res://addons/godot-binary-patcher/bin/libgodot_binary_patcher.arm64.dylib"
