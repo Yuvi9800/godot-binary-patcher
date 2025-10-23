@@ -78,21 +78,49 @@ check_godotcpp_cache() {
     return 0
 }
 
-# Function to build godot-cpp
+# Function to download and set up prebuilt godot-cpp
 build_godotcpp() {
-    echo -e "${YELLOW}Building godot-cpp (cache miss)...${NC}"
+    echo -e "${YELLOW}Downloading prebuilt godot-cpp (cache miss)...${NC}"
     
-    cd godot-cpp
+    # This is a simplified version of what the GitHub Action does.
+    # We'll just grab the latest release for the specified Godot version.
+    local godot_version="4.5-stable" # Match the version in the CI
+    local download_url="https://github.com/NodotProject/godot-cpp-builds/releases/download/godot-${godot_version}/godot-cpp-prebuilt-godot-${godot_version}.zip"
+    local cache_dir=".cache"
+    local zip_file="${cache_dir}/godot-cpp-prebuilt-godot-${godot_version}.zip"
+
+    mkdir -p "${cache_dir}"
+
+    if [ ! -f "${zip_file}" ]; then
+        echo -e "${BLUE}Downloading from: ${download_url}${NC}"
+        if ! curl -L --fail "${download_url}" -o "${zip_file}"; then
+            echo -e "${RED}Failed to download godot-cpp builds.${NC}"
+            rm -f "${zip_file}" # Clean up partial download
+            exit 1
+        fi
+    else
+        echo -e "${GREEN}Found cached godot-cpp archive.${NC}"
+    fi
     
-    echo -e "${BLUE}Building template_release...${NC}"
-    scons $SCONS_FLAGS generate_bindings=yes target=template_release
+    echo -e "${BLUE}Unzipping from ${zip_file}...${NC}"
+    # Overwrite existing files without prompting
+    # The zip file contains a `godot-cpp-prebuilt` directory, so we need to handle it.
+    local temp_unzip_dir=$(mktemp -d)
+    unzip -oq "${zip_file}" -d "${temp_unzip_dir}"
     
-    echo -e "${BLUE}Building template_debug...${NC}"
-    scons $SCONS_FLAGS generate_bindings=yes target=template_debug
+    # Move the contents from the subdirectory to the correct location
+    # Copy the contents from the unzipped directory to the godot-cpp submodule
+    if [ -d "${temp_unzip_dir}/godot-cpp-prebuilt" ]; then
+        # Use cp -r to merge the directories instead of mv
+        cp -r "${temp_unzip_dir}/godot-cpp-prebuilt/"* godot-cpp/
+    else
+        # Fallback for archives without the subdirectory
+        cp -r "${temp_unzip_dir}/"* godot-cpp/
+    fi
     
-    cd ..
+    rm -rf "${temp_unzip_dir}"
     
-    echo -e "${GREEN}godot-cpp build completed!${NC}"
+    echo -e "${GREEN}godot-cpp setup completed!${NC}"
 }
 
 # Function to install dependencies

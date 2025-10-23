@@ -57,6 +57,8 @@ env.Append(CPPPATH=[
     'godot-cpp/gdextension',
     'HDiffPatch',
     'HDiffPatch/libHDiffPatch',
+    'HDiffPatch/libHDiffPatch/HPatchLite',
+    'HDiffPatch/libHDiffPatch/HPatch',
 ])
 
 # Platform-specific include paths - only add system paths for native builds
@@ -176,6 +178,7 @@ print("env['CXX']:", env.get('CXX'))
 print("============================================")
 
 src_files = [
+    'src/register_types.cpp',
     'src/godot_binary_patcher.cpp',
     'src/hdiff_wrapper.cpp',
     'HDiffPatch/libHDiffPatch/HPatch/patch.c',

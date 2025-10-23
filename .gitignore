@@ -1,2 +1,5 @@
 .ai
 .godot
+.sconsign.dblite
+.cache
+*.os

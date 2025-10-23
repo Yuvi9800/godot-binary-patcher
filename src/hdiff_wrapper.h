@@ -2,25 +2,16 @@
 #define HDIFF_WRAPPER_H
 
 #include <atomic>
-#include <functional>
-#include <string>
-
-namespace hdiff_patch_wrapper {
 
 struct PatchStatus {
-    std::atomic<long long> current_size;
-    std::atomic<long long> total_size;
-    std::atomic<bool> cancel_flag;
+    std::atomic<double> progress;
+    std::atomic<bool> finished;
+    std::atomic<bool> success;
+    std::atomic<bool> cancel_requested;
 
-    PatchStatus() : current_size(0), total_size(0), cancel_flag(false) {}
+    PatchStatus() : progress(0.0), finished(false), success(false), cancel_requested(false) {}
 };
 
-bool apply_patch(
-    const std::string &old_file_path,
-    const std::string &diff_file_path,
-    const std::string &out_new_file_path,
-    PatchStatus &status);
-
-} // namespace hdiff_patch_wrapper
+void apply_patch(const char* old_file, const char* patch_file, const char* new_file, PatchStatus* status);
 
 #endif // HDIFF_WRAPPER_H
