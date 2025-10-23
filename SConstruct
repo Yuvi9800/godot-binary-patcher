@@ -56,6 +56,7 @@ env.Append(CPPPATH=[
     'godot-cpp/gen/include',
     'godot-cpp/gdextension',
     'HDiffPatch',
+    'HDiffPatch/libHDiffPatch',
 ])
 
 # Platform-specific include paths - only add system paths for native builds
@@ -177,7 +178,7 @@ print("============================================")
 src_files = [
     'src/godot_binary_patcher.cpp',
     'src/hdiff_wrapper.cpp',
-    'HDiffPatch/hpatch_z.c',
+    'HDiffPatch/libHDiffPatch/HPatch/patch.c',
 ]
 
 env.Execute(Mkdir('addons/godot-binary-patcher/bin'))

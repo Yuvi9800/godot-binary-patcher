@@ -1,0 +1,21 @@
+; Engine configuration file.
+; It's best edited using the editor UI and not directly,
+; since the parameters that go here are not all obvious.
+;
+; Format:
+;   [section] ; section goes between []
+;   param=value ; assign values to parameters
+
+config_version=5
+
+[application]
+
+config/name="godot-binary-patcher"
+config/description="A GDExtension to add a listener for media key presses"
+config/version="0.1.0"
+config/features=PackedStringArray("4.5", "Forward Plus")
+config/icon="uid://bfef6iyste6no"
+
+[editor_plugins]
+
+enabled=PackedStringArray("res://addons/gut/plugin.cfg")
