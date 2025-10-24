@@ -33,7 +33,7 @@ if [ ! -f "addons/godot-binary-patcher/bin/libgodot_binary_patcher.so" ] && \
 fi
 
 # Run the test scene
-echo -e "${YELLOW}Running test scene...${NC}"
-$GODOT_CMD --headless --script res://addons/gut/gut_cmdln.gd -gdir=res://test/unit/  -gexit
+echo -e "${YELLOW}Running test scene (process timeout: 120s, per-test timeouts handled in GUT code)...${NC}"
+timeout 120s $GODOT_CMD --headless --script res://addons/gut/gut_cmdln.gd -gdir=res://test/unit/ -gexit
 
 echo -e "${GREEN}All tests completed!${NC}"

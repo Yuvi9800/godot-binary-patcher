@@ -9,7 +9,6 @@ struct PatchStatus {
     std::atomic<uint64_t> bytes_total;
     std::atomic<bool> finished;
     std::atomic<bool> success;
-    std::atomic<bool> cancel_requested;
 
     PatchStatus() {
         reset();
@@ -21,7 +20,6 @@ struct PatchStatus {
         bytes_total.store(0);
         finished.store(false);
         success.store(false);
-        cancel_requested.store(false);
     }
 };
 

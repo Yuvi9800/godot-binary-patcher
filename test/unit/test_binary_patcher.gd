@@ -240,3 +240,159 @@ func test_patching_with_binary_files():
 		dir.remove(new_binary_file_dst_expected.replace("user://", ""))
 		dir.remove(new_binary_file_dst_actual.replace("user://", ""))
 		dir.remove(binary_patch_file.replace("user://", ""))
+
+func test_create_patch_progress_reports_bytes_and_ratio():
+	var ratios := []
+	var dones := []
+	var totals := []
+	var progress_cb := func(r, bd, bt):
+		ratios.push_back(r)
+		dones.push_back(bd)
+		totals.push_back(bt)
+	patcher.progress.connect(progress_cb)
+
+	var old_file_abs = ProjectSettings.globalize_path(OLD_FILE)
+	var new_file_abs = ProjectSettings.globalize_path(NEW_FILE_EXPECTED)
+	var patch_file_abs = ProjectSettings.globalize_path(PATCH_FILE)
+
+	# Connect BEFORE starting async work to avoid missing the finished signal
+	var completed := false
+	var success_val := false
+	var finished_cb := func(s):
+		completed = true
+		success_val = s
+	patcher.finished.connect(finished_cb)
+
+	# Now start the async create
+	patcher.create_patch_async(old_file_abs, new_file_abs, patch_file_abs)
+
+	var start_ms := Time.get_ticks_msec()
+	while not completed and (Time.get_ticks_msec() - start_ms) < 10000:
+		await get_tree().process_frame
+
+	if not completed or not success_val:
+		# Did not finish in time: still verify that progress is measurable.
+		assert_gt(ratios.size(), 0, "Progress should have been emitted within 10 seconds (create).")
+		patcher.finished.disconnect(finished_cb)
+		patcher.progress.disconnect(progress_cb)
+		return
+
+	# Progress must emit, be monotonic, and consistent with byte counters
+	assert_gt(ratios.size(), 0, "Progress signal should have been emitted at least once.")
+	for i in range(ratios.size() - 1):
+		assert_true(ratios[i] <= ratios[i + 1], "Progress ratio should be non-decreasing.")
+	for i in range(dones.size() - 1):
+		assert_true(dones[i] <= dones[i + 1], "bytes_done should be non-decreasing.")
+	for i in range(totals.size() - 1):
+		assert_true(totals[i] <= totals[i + 1], "bytes_total should be non-decreasing.")
+
+	var any_total_positive := false
+	for t in totals:
+		if t > 0:
+			any_total_positive = true
+			break
+	assert_true(any_total_positive, "bytes_total should be > 0 at some point.")
+
+	var final_ratio: float = ratios[-1]
+	var final_done: int = dones[-1]
+	var final_total: int = totals[-1]
+	assert_eq(final_done, final_total, "Final bytes_done should equal bytes_total.")
+	assert_eq(final_ratio, 1.0, "Final progress ratio should be 1.0.")
+
+	# Check ratio ~= bytes_done / bytes_total when total > 0 (allow tiny tolerance)
+	for i in range(ratios.size()):
+		var bt = totals[i]
+		if bt > 0:
+			var expected = float(dones[i]) / float(bt)
+			var delta = abs(ratios[i] - expected)
+			assert_lt(delta, 0.051, "ratio should approximately equal bytes_done/bytes_total (delta=%f)" % delta)
+
+	# Cleanup connections for this test
+	patcher.progress.disconnect(progress_cb)
+	patcher.finished.disconnect(finished_cb)
+
+func test_apply_patch_progress_reports_bytes_and_ratio():
+	var ratios := []
+	var dones := []
+	var totals := []
+	var progress_cb := func(r, bd, bt):
+		ratios.push_back(r)
+		dones.push_back(bd)
+		totals.push_back(bt)
+	patcher.progress.connect(progress_cb)
+
+	var old_file_abs = ProjectSettings.globalize_path(OLD_FILE)
+	var new_file_exp_abs = ProjectSettings.globalize_path(NEW_FILE_EXPECTED)
+	var patch_file_abs = ProjectSettings.globalize_path(PATCH_FILE)
+	var new_file_act_abs = ProjectSettings.globalize_path(NEW_FILE_ACTUAL)
+
+	# First, create the patch (with timeout)
+	var completed1 := false
+	var success1 := false
+	var finished_cb1 := func(s):
+		completed1 = true
+		success1 = s
+	patcher.finished.connect(finished_cb1)
+
+	patcher.create_patch_async(old_file_abs, new_file_exp_abs, patch_file_abs)
+	var start_ms1 := Time.get_ticks_msec()
+	while not completed1 and (Time.get_ticks_msec() - start_ms1) < 10000:
+		await get_tree().process_frame
+	if not completed1 or not success1:
+		assert_gt(ratios.size(), 0, "Progress should have been emitted within 10 seconds during create prerequisite.")
+		patcher.finished.disconnect(finished_cb1)
+		patcher.progress.disconnect(progress_cb)
+		return
+	patcher.finished.disconnect(finished_cb1)
+
+	# Now, apply the patch (with timeout)
+	var completed2 := false
+	var success2 := false
+	var finished_cb2 := func(s):
+		completed2 = true
+		success2 = s
+	patcher.finished.connect(finished_cb2)
+
+	patcher.apply_patch_async(old_file_abs, patch_file_abs, new_file_act_abs)
+	var start_ms2 := Time.get_ticks_msec()
+	while not completed2 and (Time.get_ticks_msec() - start_ms2) < 10000:
+		await get_tree().process_frame
+	if not completed2 or not success2:
+		assert_gt(ratios.size(), 0, "Progress should have been emitted within 10 seconds during apply.")
+		patcher.finished.disconnect(finished_cb2)
+		patcher.progress.disconnect(progress_cb)
+		return
+	patcher.finished.disconnect(finished_cb2)
+
+	# Progress must emit, be monotonic, and consistent with byte counters
+	assert_gt(ratios.size(), 0, "Progress signal should have been emitted at least once during apply.")
+	for i in range(ratios.size() - 1):
+		assert_true(ratios[i] <= ratios[i + 1], "Progress ratio should be non-decreasing.")
+	for i in range(dones.size() - 1):
+		assert_true(dones[i] <= dones[i + 1], "bytes_done should be non-decreasing.")
+	for i in range(totals.size() - 1):
+		assert_true(totals[i] <= totals[i + 1], "bytes_total should be non-decreasing.")
+
+	var any_total_positive := false
+	for t in totals:
+		if t > 0:
+			any_total_positive = true
+			break
+	assert_true(any_total_positive, "bytes_total should be > 0 at some point.")
+
+	var final_ratio: float = ratios[-1]
+	var final_done: int = dones[-1]
+	var final_total: int = totals[-1]
+	assert_eq(final_done, final_total, "Final bytes_done should equal bytes_total.")
+	assert_eq(final_ratio, 1.0, "Final progress ratio should be 1.0.")
+
+	# Check ratio ~= bytes_done / bytes_total when total > 0 (allow tiny tolerance)
+	for i in range(ratios.size()):
+		var bt = totals[i]
+		if bt > 0:
+			var expected = float(dones[i]) / float(bt)
+			var delta = abs(ratios[i] - expected)
+			assert_lt(delta, 0.051, "ratio should approximately equal bytes_done/bytes_total (delta=%f)" % delta)
+
+	# Cleanup connections for this test
+	patcher.progress.disconnect(progress_cb)

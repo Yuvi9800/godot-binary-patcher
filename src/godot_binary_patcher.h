@@ -23,10 +23,10 @@ public:
     BinaryPatcher();
     ~BinaryPatcher();
 
+    void _enter_tree() override;
     void _process(double delta);
     void apply_patch_async(const String& old_file, const String& patch_file, const String& new_file);
     void create_patch_async(const String& old_file, const String& new_file, const String& diff_file);
-    void cancel();
 };
 
 #endif // GODOT_BINARY_PATCHER_H

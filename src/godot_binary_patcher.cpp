@@ -10,7 +10,6 @@ void BinaryPatcher::_bind_methods() {
     // Methods
     ClassDB::bind_method(D_METHOD("apply_patch_async", "old_file", "patch_file", "new_file"), &BinaryPatcher::apply_patch_async);
     ClassDB::bind_method(D_METHOD("create_patch_async", "old_file", "new_file", "diff_file"), &BinaryPatcher::create_patch_async);
-    ClassDB::bind_method(D_METHOD("cancel"), &BinaryPatcher::cancel);
 
     // Signals
     ADD_SIGNAL(MethodInfo("progress", PropertyInfo(Variant::FLOAT, "ratio"), PropertyInfo(Variant::INT, "bytes_done"), PropertyInfo(Variant::INT, "bytes_total")));
@@ -18,14 +17,19 @@ void BinaryPatcher::_bind_methods() {
 }
 
 BinaryPatcher::BinaryPatcher() {
-    // Constructor
+    // Ensure _process is called so we can emit progress/finished signals from the main thread
+    set_process(true);
 }
 
 BinaryPatcher::~BinaryPatcher() {
-    cancel();
     if (patch_thread.joinable()) {
         patch_thread.join();
     }
+}
+
+void BinaryPatcher::_enter_tree() {
+    // Ensure _process() runs so we can emit "progress" and "finished" from the main thread.
+    set_process(true);
 }
 
 void BinaryPatcher::_process(double delta) {
@@ -85,10 +89,4 @@ void BinaryPatcher::create_patch_async(const String& old_file, const String& new
             &this->patch_status
         );
     });
-}
-
-void BinaryPatcher::cancel() {
-    if (patch_thread.joinable()) {
-        patch_status.cancel_requested.store(true);
-    }
 }
