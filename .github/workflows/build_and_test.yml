@@ -72,12 +72,6 @@ jobs:
           use-dotnet: false
           include-templates: false
 
-      - name: Install GUT
-        run: |
-          git clone https://github.com/bitwes/Gut.git gut_temp
-          mv gut_temp/addons/gut addons/
-          rm -rf gut_temp
-
       - name: Import project
         run: |
           timeout 60 godot --headless --import --quit || true
