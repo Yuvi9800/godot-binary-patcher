@@ -4,3 +4,19 @@
 [submodule "godot-cpp"]
 	path = godot-cpp
 	url = https://github.com/godotengine/godot-cpp.git
+[submodule "lzma"]
+	path = lzma
+	url = https://github.com/sisong/lzma
+[submodule "libmd5"]
+	path = libmd5
+	url = https://github.com/sisong/libmd5
+[submodule "libdeflate"]
+	path = libdeflate
+	url = https://github.com/sisong/libdeflate
+	branch = stream-mt
+[submodule "zlib"]
+	path = zlib
+	url = https://github.com/madler/zlib
+[submodule "zstd"]
+	path = zstd
+	url = https://github.com/facebook/zstd

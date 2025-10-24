@@ -56,9 +56,11 @@ env.Append(CPPPATH=[
     'godot-cpp/gen/include',
     'godot-cpp/gdextension',
     'HDiffPatch',
-    'HDiffPatch/libHDiffPatch',
-    'HDiffPatch/libHDiffPatch/HPatchLite',
-    'HDiffPatch/libHDiffPatch/HPatch',
+    'libdeflate',
+    'lzma/C',
+    'libmd5',
+    'HDiffPatch/lzma/C',
+    'zstd/lib'
 ])
 
 # Platform-specific include paths - only add system paths for native builds
@@ -93,6 +95,7 @@ else:
     # Linux/macOS/MinGW flags
     env.Append(CCFLAGS=['-fPIC'])
     env.Append(CXXFLAGS=['-std=c++17'])
+    env.Append(CPPDEFINES=['_HDIFFPATCH_DLL_BUILD_', '_LARGEFILE_SOURCE', '_FILE_OFFSET_BITS=64'])
 
     # macOS: Add architecture flags for cross-compilation
     if platform == 'macos' and arch != 'universal':
@@ -153,7 +156,8 @@ if is_windows:
     # pthread is needed by godot-cpp (winpthreads for MinGW)
     env.Append(LIBS=['ws2_32', 'bcrypt', 'user32', 'pthread'])
 elif platform == 'linux':
-    env.Append(LIBS=['pthread', 'dl', 'dbus-1'])
+    env.Append(LIBS=['pthread', 'dl', 'dbus-1', 'z', 'bz2'])
+    env.Append(LINKFLAGS=['-Wl,--no-undefined'])
 elif platform == 'macos':
     env.Append(LIBS=['pthread'])
     # CoreFoundation and CoreGraphics are needed for CGEventTap
@@ -182,7 +186,80 @@ src_files = [
     'src/godot_binary_patcher.cpp',
     'src/hdiff_wrapper.cpp',
     'HDiffPatch/libHDiffPatch/HPatch/patch.c',
+    'HDiffPatch/file_for_patch.c',
+    'HDiffPatch/libHDiffPatch/HDiff/diff.cpp',
+    'HDiffPatch/libHDiffPatch/HDiff/private_diff/suffix_string.cpp',
+    'HDiffPatch/libHDiffPatch/HDiff/match_block.cpp',
+    'HDiffPatch/libHDiffPatch/HDiff/private_diff/limit_mem_diff/stream_serialize.cpp',
+    'HDiffPatch/libHDiffPatch/HDiff/private_diff/limit_mem_diff/adler_roll.c',
+    'HDiffPatch/libHDiffPatch/HDiff/private_diff/limit_mem_diff/digest_matcher.cpp',
+    'HDiffPatch/libHDiffPatch/HPatch/hpatch_mt/_hpatch_mt.c',
+    'HDiffPatch/libHDiffPatch/HDiff/private_diff/bytes_rle.cpp',
+    'HDiffPatch/libHDiffPatch/HDiff/private_diff/compress_detect.cpp',
+    'HDiffPatch/libHDiffPatch/HPatchLite/hpatch_lite.c',
+    'HDiffPatch/dirDiffPatch/dir_diff/dir_diff_tools.cpp',
+    'HDiffPatch/dirDiffPatch/dir_diff/dir_diff.cpp',
+    'HDiffPatch/dirDiffPatch/dir_diff/dir_manifest.cpp',
+    'HDiffPatch/dirDiffPatch/dir_patch/dir_patch_tools.c',
+    'HDiffPatch/dirDiffPatch/dir_patch/dir_patch.c',
+    'HDiffPatch/compress_parallel.cpp',
+    'libmd5/md5.c',
+    'HDiffPatch/libHDiffPatch/HDiff/private_diff/libdivsufsort/divsufsort.cpp',
+    'HDiffPatch/libParallel/parallel_import_c.c',
+    'HDiffPatch/bsdiff_wrapper/bsdiff_wrapper.cpp',
+    'HDiffPatch/bsdiff_wrapper/bspatch_wrapper.c',
+    'HDiffPatch/vcdiff_wrapper/vcdiff_wrapper.cpp',
+    'HDiffPatch/vcdiff_wrapper/vcpatch_wrapper.c',
+    'HDiffPatch/libHDiffPatch/HPatch/hpatch_mt/hpatch_mt.c',
+    'HDiffPatch/dirDiffPatch/dir_patch/ref_stream.c',
+    'HDiffPatch/dirDiffPatch/dir_patch/res_handle_limit.c',
+    'HDiffPatch/dirDiffPatch/dir_patch/new_dir_output.c',
+    'HDiffPatch/libParallel/parallel_channel.cpp',
+    'HDiffPatch/libHDiffPatch/HPatch/hpatch_mt/_hinput_mt.c',
+    'HDiffPatch/libHDiffPatch/HPatch/hpatch_mt/_hcache_old_mt.c',
+    'HDiffPatch/libHDiffPatch/HPatch/hpatch_mt/_houtput_mt.c',
+    'lzma/C/LzmaDec.c',
+    'lzma/C/Lzma2Dec.c',
+    'lzma/C/XzDec.c',
+    'HDiffPatch/dirDiffPatch/dir_patch/new_stream.c',
+    'HDiffPatch/libHDiffPatch/HDiff/private_diff/libdivsufsort/divsufsort64.cpp',
+    'lzma/C/7zCrc.c',
+    'lzma/C/Delta.c',
+    'lzma/C/Sha256.c',
+    'zstd/lib/common/debug.c',
+    'zstd/lib/common/entropy_common.c',
+    'zstd/lib/common/error_private.c',
+    'zstd/lib/common/fse_decompress.c',
+    'zstd/lib/common/xxhash.c',
+    'zstd/lib/common/zstd_common.c',
+    'zstd/lib/decompress/huf_decompress.c',
+    'zstd/lib/decompress/zstd_decompress.c',
+    'zstd/lib/decompress/huf_decompress_amd64.S',
+    'lzma/C/Bra86.c',
+    'lzma/C/XzEnc.c',
+    'lzma/C/XzCrc64.c',
+    'lzma/C/7zCrcOpt.c',
+    'lzma/C/CpuArch.c',
+    'lzma/C/Xz.c',
+    'lzma/C/XzCrc64Opt.c',
+    'zstd/lib/decompress/zstd_ddict.c',
+    'zstd/lib/decompress/zstd_decompress_block.c',
+    'lzma/C/Bra.c',
+    'lzma/C/Sha256Opt.c',
+    'lzma/C/MtDec.c',
+    'lzma/C/MtCoder.c',
+    'lzma/C/Threads.c',
+    'lzma/C/LzmaEnc.c',
+    'lzma/C/LzmaLib.c',
+    'lzma/C/Lzma2Enc.c',
+    'lzma/C/Alloc.c',
+    'lzma/C/7zStream.c',
+    'lzma/C/LzFind.c',
+    'lzma/C/LzFindMt.c',
+    'lzma/C/LzFindOpt.c'
 ]
+
+
 
 env.Execute(Mkdir('addons/godot-binary-patcher/bin'))
 

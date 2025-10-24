@@ -1,85 +1,102 @@
 #include "hdiff_wrapper.h"
-#include "hpatch_lite.h"
-#include <stdio.h>
+#include "HDiffPatch/libHDiffPatch/HPatch/patch.h"
+#include "HDiffPatch/libHDiffPatch/HDiff/diff.h"
+#include "HDiffPatch/file_for_patch.h"
+#include <stdexcept>
 #include <vector>
-
-// hpatch_lite requires a listener to handle I/O. This struct holds file handles
-// and implements the read/write callbacks required by the patching function.
-struct FileListener {
-    hpatchi_listener_t base;
-    FILE* old_file;
-    FILE* new_file;
-    PatchStatus* status;
-};
-
-// Callback to read from the old file.
-static hpi_BOOL read_old_file(hpatchi_listener_t* listener, hpi_pos_t read_from_pos, unsigned char* out_data, hpi_size_t data_size) {
-    FileListener* file_listener = (FileListener*)listener;
-    if (fseek(file_listener->old_file, read_from_pos, SEEK_SET) != 0) return hpi_FALSE;
-    return fread(out_data, 1, data_size, file_listener->old_file) == data_size;
-}
-
-// Callback to write to the new file.
-static hpi_BOOL write_new_file(hpatchi_listener_t* listener, const unsigned char* data, hpi_size_t data_size) {
-    FileListener* file_listener = (FileListener*)listener;
-    return fwrite(data, 1, data_size, file_listener->new_file) == data_size;
-}
-
-// Callback to read from the patch file (diff data).
-static hpi_BOOL read_diff_data(hpi_TInputStreamHandle diff_data, hpi_byte* out_data, hpi_size_t* data_size) {
-    FILE* patch_file = (FILE*)diff_data;
-    size_t bytes_read = fread(out_data, 1, *data_size, patch_file);
-    if (bytes_read == 0 && ferror(patch_file)) {
-        return hpi_FALSE; // Read error
-    }
-    *data_size = bytes_read;
-    return hpi_TRUE;
-}
-
 void apply_patch(const char* old_filename, const char* patch_filename, const char* new_filename, PatchStatus* status) {
-    FILE* patch_file = fopen(patch_filename, "rb");
-    if (!patch_file) {
+    try {
+        hpatch_TFileStreamInput old_file;
+        hpatch_TFileStreamInput patch_file;
+        hpatch_TFileStreamOutput new_file;
+
+        hpatch_TFileStreamInput_init(&old_file);
+        hpatch_TFileStreamInput_init(&patch_file);
+        hpatch_TFileStreamOutput_init(&new_file);
+
+        if (!hpatch_TFileStreamInput_open(&old_file, old_filename))
+            throw std::runtime_error("Failed to open old file");
+        if (!hpatch_TFileStreamInput_open(&patch_file, patch_filename))
+            throw std::runtime_error("Failed to open patch file");
+
+        // Determine diff type and target size
+        hpatch_StreamPos_t target_size = (hpatch_StreamPos_t)-1;
+        bool is_single = false;
+        hpatch_compressedDiffInfo cinfo;
+        hpatch_singleCompressedDiffInfo sinfo;
+        if (getCompressedDiffInfo(&cinfo, &patch_file.base)) {
+            target_size = cinfo.newDataSize;
+        } else if (getSingleCompressedDiffInfo(&sinfo, &patch_file.base, 0)) {
+            target_size = sinfo.newDataSize;
+            is_single = true;
+        }
+
+        if (!hpatch_TFileStreamOutput_open(&new_file, new_filename, target_size))
+            throw std::runtime_error("Failed to open new file for writing");
+
+        // Allow non-sequential writes if patcher performs random seeks (safe for all types)
+        hpatch_TFileStreamOutput_setRandomOut(&new_file, hpatch_TRUE);
+
+        // Apply according to detected diff type
+        if (is_single) {
+            const size_t step_mem = (size_t)sinfo.stepMemSize;
+            // Allocate a modest cache: stepMem + 1 MiB margin
+            const size_t cache_size = step_mem + (1u << 20);
+            std::vector<unsigned char> cache(cache_size);
+            status->success = patch_single_compressed_diff(
+                &new_file.base, &old_file.base, &patch_file.base,
+                sinfo.diffDataPos, sinfo.uncompressedSize, sinfo.compressedSize,
+                0,                // decompressPlugin (none needed if uncompressed)
+                sinfo.coverCount, // coverCount
+                (size_t)sinfo.stepMemSize,
+                cache.data(), cache.data() + cache.size(),
+                0,                // coversListener
+                1                 // threadNum
+            );
+        } else {
+            // Standard compressed diff (possibly uncompressed), plugin null when not required
+            status->success = patch_decompress(&new_file.base, &old_file.base, &patch_file.base, 0);
+        }
+
+        hpatch_TFileStreamInput_close(&old_file);
+        hpatch_TFileStreamInput_close(&patch_file);
+        hpatch_TFileStreamOutput_close(&new_file);
+    } catch (const std::exception& e) {
+        // In a real application, you'd want to log e.what()
         status->success = false;
-        status->finished = true;
-        return;
     }
+    status->finished = true;
+}
 
-    hpi_compressType compress_type;
-    hpi_pos_t new_size;
-    hpi_pos_t uncompress_size;
+void create_patch(const char* old_filename, const char* new_filename, const char* diff_filename, PatchStatus* status) {
+    try {
+        hpatch_TFileStreamInput old_file;
+        hpatch_TFileStreamInput new_file;
+        hpatch_TFileStreamOutput diff_file;
 
-    // Read patch metadata to get the expected size of the new file.
-    if (!hpatch_lite_open(patch_file, read_diff_data, &compress_type, &new_size, &uncompress_size)) {
-        fclose(patch_file);
+        hpatch_TFileStreamInput_init(&old_file);
+        hpatch_TFileStreamInput_init(&new_file);
+        hpatch_TFileStreamOutput_init(&diff_file);
+
+        if (!hpatch_TFileStreamInput_open(&old_file, old_filename))
+            throw std::runtime_error("Failed to open old file");
+        if (!hpatch_TFileStreamInput_open(&new_file, new_filename))
+            throw std::runtime_error("Failed to open new file");
+        if (!hpatch_TFileStreamOutput_open(&diff_file, diff_filename, hpatch_kNullStreamPos))
+            throw std::runtime_error("Failed to open diff file for writing");
+        // Allow non-sequential writes during diff serialization
+        hpatch_TFileStreamOutput_setRandomOut(&diff_file, hpatch_TRUE);
+
+        // Create compressed-diff format without compression to avoid plugin requirements
+        create_compressed_diff_stream(&new_file.base, &old_file.base, &diff_file.base, 0);
+        status->success = true;
+
+        hpatch_TFileStreamInput_close(&old_file);
+        hpatch_TFileStreamInput_close(&new_file);
+        hpatch_TFileStreamOutput_close(&diff_file);
+    } catch (const std::exception& e) {
+        // In a real application, you'd want to log e.what()
         status->success = false;
-        status->finished = true;
-        return;
-    }
-
-    FileListener listener;
-    listener.base.diff_data = patch_file;
-    listener.base.read_diff = read_diff_data;
-    listener.base.read_old = read_old_file;
-    listener.base.write_new = write_new_file;
-    listener.status = status;
-
-    listener.old_file = fopen(old_filename, "rb");
-    listener.new_file = fopen(new_filename, "wb");
-
-    bool success = false;
-    if (listener.old_file && listener.new_file) {
-        // The patch function requires a temporary memory buffer (cache).
-        std::vector<unsigned char> temp_cache(hpi_kMinCacheSize);
-        success = hpatch_lite_patch(&listener.base, new_size, temp_cache.data(), temp_cache.size());
-    }
-
-    if (listener.old_file) fclose(listener.old_file);
-    if (listener.new_file) fclose(listener.new_file);
-    fclose(patch_file);
-
-    status->success = success;
-    if (success) {
-        status->progress.store(1.0);
     }
     status->finished = true;
 }

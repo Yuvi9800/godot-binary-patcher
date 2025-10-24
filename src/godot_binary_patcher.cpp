@@ -1,13 +1,18 @@
 #include "godot_binary_patcher.h"
 #include <godot_cpp/core/class_db.hpp>
 #include <godot_cpp/classes/engine.hpp>
+#include <godot_cpp/classes/project_settings.hpp>
+#include <godot_cpp/classes/os.hpp>
 
 using namespace godot;
 
 void BinaryPatcher::_bind_methods() {
+    // Methods
     ClassDB::bind_method(D_METHOD("apply_patch_async", "old_file", "patch_file", "new_file"), &BinaryPatcher::apply_patch_async);
+    ClassDB::bind_method(D_METHOD("create_patch_async", "old_file", "new_file", "diff_file"), &BinaryPatcher::create_patch_async);
     ClassDB::bind_method(D_METHOD("cancel"), &BinaryPatcher::cancel);
 
+    // Signals
     ADD_SIGNAL(MethodInfo("progress", PropertyInfo(Variant::FLOAT, "ratio"), PropertyInfo(Variant::INT, "bytes_done"), PropertyInfo(Variant::INT, "bytes_total")));
     ADD_SIGNAL(MethodInfo("finished", PropertyInfo(Variant::BOOL, "success")));
 }
@@ -17,43 +22,69 @@ BinaryPatcher::BinaryPatcher() {
 }
 
 BinaryPatcher::~BinaryPatcher() {
+    cancel();
     if (patch_thread.joinable()) {
-        patch_status.cancel_requested.store(true);
         patch_thread.join();
     }
 }
 
 void BinaryPatcher::_process(double delta) {
-    if (patch_status.finished.load()) {
-        if (patch_thread.joinable()) {
+    if (Engine::get_singleton()->is_editor_hint()) {
+        return;
+    }
+
+    if (patch_thread.joinable()) {
+        if (patch_status.finished.load()) {
             patch_thread.join();
+            emit_signal("finished", patch_status.success.load());
+        } else {
+            emit_signal("progress", patch_status.progress.load(), (int64_t)patch_status.bytes_done.load(), (int64_t)patch_status.bytes_total.load());
         }
-        emit_signal("finished", patch_status.success.load());
-        set_process(false);
-    } else {
-        // This is a simplified progress report. A more accurate report would need total bytes.
-        emit_signal("progress", patch_status.progress.load(), 0, 0);
     }
 }
 
 void BinaryPatcher::apply_patch_async(const String& old_file, const String& patch_file, const String& new_file) {
     if (patch_thread.joinable()) {
-        // Another patch is already in progress
         return;
     }
 
-    patch_status.progress.store(0.0);
-    patch_status.finished.store(false);
-    patch_status.success.store(false);
-    patch_status.cancel_requested.store(false);
+    patch_status.reset();
 
-    patch_thread = std::thread(apply_patch,
-        old_file.utf8().get_data(),
-        patch_file.utf8().get_data(),
-        new_file.utf8().get_data(),
-        &patch_status);
+    String user_data_dir = OS::get_singleton()->get_user_data_dir();
+    String old_file_abs = old_file.replace("user://", user_data_dir + "/");
+    String patch_file_abs = patch_file.replace("user://", user_data_dir + "/");
+    String new_file_abs = new_file.replace("user://", user_data_dir + "/");
 
-    set_process(true);
+    patch_thread = std::thread([this, old_file_abs, patch_file_abs, new_file_abs]() {
+        apply_patch(
+            old_file_abs.utf8().get_data(),
+            patch_file_abs.utf8().get_data(),
+            new_file_abs.utf8().get_data(),
+            &this->patch_status
+        );
+    });
+}
+
+void BinaryPatcher::create_patch_async(const String& old_file, const String& new_file, const String& diff_file) {
+    if (patch_thread.joinable()) {
+        return;
+    }
+
+    patch_status.reset();
+
+    String user_data_dir = OS::get_singleton()->get_user_data_dir();
+    String old_file_abs = old_file.replace("user://", user_data_dir + "/");
+    String new_file_abs = new_file.replace("user://", user_data_dir + "/");
+    String diff_file_abs = diff_file.replace("user://", user_data_dir + "/");
+
+    patch_thread = std::thread([this, old_file_abs, new_file_abs, diff_file_abs]() {
+        create_patch(
+            old_file_abs.utf8().get_data(),
+            new_file_abs.utf8().get_data(),
+            diff_file_abs.utf8().get_data(),
+            &this->patch_status
+        );
+    });
 }
 
 void BinaryPatcher::cancel() {

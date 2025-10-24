@@ -13,8 +13,9 @@ config_version=5
 config/name="godot-binary-patcher"
 config/description="A GDExtension to add a listener for media key presses"
 config/version="0.1.0"
+run/main_scene="uid://b5w5s5f5d5g5"
 config/features=PackedStringArray("4.5", "Forward Plus")
-config/icon="uid://bfef6iyste6no"
+config/icon="uid://credc7d08pe0s"
 
 [editor_plugins]
 
