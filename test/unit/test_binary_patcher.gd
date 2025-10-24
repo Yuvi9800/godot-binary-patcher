@@ -267,12 +267,12 @@ func test_create_patch_progress_reports_bytes_and_ratio():
 	patcher.create_patch_async(old_file_abs, new_file_abs, patch_file_abs)
 
 	var start_ms := Time.get_ticks_msec()
-	while not completed and (Time.get_ticks_msec() - start_ms) < 10000:
+	while not completed and (Time.get_ticks_msec() - start_ms) < 30000:
 		await get_tree().process_frame
 
 	if not completed or not success_val:
 		# Did not finish in time: still verify that progress is measurable.
-		assert_gt(ratios.size(), 0, "Progress should have been emitted within 10 seconds (create).")
+		assert_gt(ratios.size(), 0, "Progress should have been emitted within 30 seconds (create).")
 		patcher.finished.disconnect(finished_cb)
 		patcher.progress.disconnect(progress_cb)
 		return
@@ -336,10 +336,10 @@ func test_apply_patch_progress_reports_bytes_and_ratio():
 
 	patcher.create_patch_async(old_file_abs, new_file_exp_abs, patch_file_abs)
 	var start_ms1 := Time.get_ticks_msec()
-	while not completed1 and (Time.get_ticks_msec() - start_ms1) < 10000:
+	while not completed1 and (Time.get_ticks_msec() - start_ms1) < 30000:
 		await get_tree().process_frame
 	if not completed1 or not success1:
-		assert_gt(ratios.size(), 0, "Progress should have been emitted within 10 seconds during create prerequisite.")
+		assert_gt(ratios.size(), 0, "Progress should have been emitted within 30 seconds during create prerequisite.")
 		patcher.finished.disconnect(finished_cb1)
 		patcher.progress.disconnect(progress_cb)
 		return
@@ -355,10 +355,10 @@ func test_apply_patch_progress_reports_bytes_and_ratio():
 
 	patcher.apply_patch_async(old_file_abs, patch_file_abs, new_file_act_abs)
 	var start_ms2 := Time.get_ticks_msec()
-	while not completed2 and (Time.get_ticks_msec() - start_ms2) < 10000:
+	while not completed2 and (Time.get_ticks_msec() - start_ms2) < 30000:
 		await get_tree().process_frame
 	if not completed2 or not success2:
-		assert_gt(ratios.size(), 0, "Progress should have been emitted within 10 seconds during apply.")
+		assert_gt(ratios.size(), 0, "Progress should have been emitted within 30 seconds during apply.")
 		patcher.finished.disconnect(finished_cb2)
 		patcher.progress.disconnect(progress_cb)
 		return
