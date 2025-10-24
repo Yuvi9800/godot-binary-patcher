@@ -103,6 +103,18 @@ else:
         env.Append(CCFLAGS=['-arch', arch])
         env.Append(LINKFLAGS=['-arch', arch])
 
+    # macOS: Ensure assembler uses the correct architecture for .S sources (e.g., zstd huf_decompress_amd64.S)
+    if platform == 'macos':
+        # Use the C compiler as the assembler/preprocessor driver so -arch is honored
+        env['AS'] = env.get('CC')
+        env['ASPP'] = env.get('CC')
+        # Flags for plain .s (ASFLAGS) and preprocessed .S (ASPPFLAGS)
+        env.Append(ASFLAGS=['-x', 'assembler-with-cpp'])
+        env.Append(ASPPFLAGS=['-x', 'assembler-with-cpp'])
+        if arch != 'universal':
+            env.Append(ASFLAGS=['-arch', arch])
+            env.Append(ASPPFLAGS=['-arch', arch])
+
 if is_windows and use_mingw:
     # Add Windows-specific defines for MinGW
     env.Append(CPPDEFINES=['WIN32', '_WIN32', 'WINDOWS_ENABLED'])
@@ -234,7 +246,6 @@ src_files = [
     'zstd/lib/common/zstd_common.c',
     'zstd/lib/decompress/huf_decompress.c',
     'zstd/lib/decompress/zstd_decompress.c',
-    'zstd/lib/decompress/huf_decompress_amd64.S',
     'lzma/C/Bra86.c',
     'lzma/C/XzEnc.c',
     'lzma/C/XzCrc64.c',
@@ -259,6 +270,9 @@ src_files = [
     'lzma/C/LzFindOpt.c'
 ]
 
+# Only build x86_64-optimized Zstd asm on x86_64 builds
+if arch == 'x86_64':
+    src_files.append('zstd/lib/decompress/huf_decompress_amd64.S')
 
 
 env.Execute(Mkdir('addons/godot-binary-patcher/bin'))
