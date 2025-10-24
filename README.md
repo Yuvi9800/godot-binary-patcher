@@ -1,7 +1,7 @@
 # Godot Binary Patcher
 
 <p align="center">
-    <img width="512" height="512" alt="image" src="https://github.com/NodotProject/godot-binary-patcher/blob/main/icon.png?raw=true" />
+    <img width="256" height="256" alt="image" src="https://github.com/NodotProject/godot-binary-patcher/blob/main/icon.png?raw=true" />
 </p>
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
