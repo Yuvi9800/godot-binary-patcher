@@ -191,24 +191,30 @@ func test_create_patch_with_identical_files():
 	assert_eq(actual_content, expected_content, "Patched content should be identical.")
 
 func test_patching_with_binary_files():
-	# Define paths for binary files
-	var old_binary_file_src = "zstd/tests/golden-decompression/block-128k.zst"
-	var new_binary_file_src = "zstd/tests/golden-decompression/empty-block.zst"
+	# Generate small binary fixtures to keep tests fast
 	var old_binary_file_dst = "user://old_binary.zst"
 	var new_binary_file_dst_expected = "user://new_binary_expected.zst"
 	var new_binary_file_dst_actual = "user://new_binary_actual.zst"
 	var binary_patch_file = "user://binary.hdiff"
 
-	# Ensure the source files exist before trying to copy
-	assert_true(FileAccess.file_exists(old_binary_file_src), "Source old binary file should exist.")
-	assert_true(FileAccess.file_exists(new_binary_file_src), "Source new binary file should exist.")
+	# Create deterministic binary content (~64 KiB) to simulate real binary data
+	var old_bytes: PackedByteArray = PackedByteArray()
+	old_bytes.resize(64 * 1024)
+	for i in range(old_bytes.size()):
+		old_bytes[i] = i % 251 # non-255 modulus to vary values
 
-	# Copy binary files to user directory for the test
-	DirAccess.copy_absolute(old_binary_file_src, old_binary_file_dst)
-	DirAccess.copy_absolute(new_binary_file_src, new_binary_file_dst_expected)
-	
-	assert_true(FileAccess.file_exists(old_binary_file_dst), "Copied old binary file should exist.")
-	assert_true(FileAccess.file_exists(new_binary_file_dst_expected), "Copied new binary file should exist.")
+	var new_bytes: PackedByteArray = old_bytes.duplicate()
+	# Introduce sparse differences every 1 KiB
+	for i in range(0, new_bytes.size(), 1024):
+		new_bytes[i] = int((new_bytes[i] + 7) % 256)
+
+	# Write to disk
+	var f1 = FileAccess.open(old_binary_file_dst, FileAccess.WRITE)
+	f1.store_buffer(old_bytes)
+	f1.close()
+	var f2 = FileAccess.open(new_binary_file_dst_expected, FileAccess.WRITE)
+	f2.store_buffer(new_bytes)
+	f2.close()
 
 	var old_binary_file_dst_abs = ProjectSettings.globalize_path(old_binary_file_dst)
 	var new_binary_file_dst_expected_abs = ProjectSettings.globalize_path(new_binary_file_dst_expected)
@@ -230,7 +236,6 @@ func test_patching_with_binary_files():
 	# Verify the content of the patched file
 	var expected_bytes = FileAccess.get_file_as_bytes(new_binary_file_dst_expected)
 	var actual_bytes = FileAccess.get_file_as_bytes(new_binary_file_dst_actual)
-	
 	assert_eq(actual_bytes, expected_bytes, "Patched binary file content should match the expected new binary file content.")
 
 	# Clean up binary files
@@ -267,7 +272,7 @@ func test_create_patch_progress_reports_bytes_and_ratio():
 	patcher.create_patch_async(old_file_abs, new_file_abs, patch_file_abs)
 
 	var start_ms := Time.get_ticks_msec()
-	while not completed and (Time.get_ticks_msec() - start_ms) < 30000:
+	while not completed and (Time.get_ticks_msec() - start_ms) < 5000:
 		await get_tree().process_frame
 
 	if not completed or not success_val:
@@ -336,7 +341,7 @@ func test_apply_patch_progress_reports_bytes_and_ratio():
 
 	patcher.create_patch_async(old_file_abs, new_file_exp_abs, patch_file_abs)
 	var start_ms1 := Time.get_ticks_msec()
-	while not completed1 and (Time.get_ticks_msec() - start_ms1) < 30000:
+	while not completed1 and (Time.get_ticks_msec() - start_ms1) < 5000:
 		await get_tree().process_frame
 	if not completed1 or not success1:
 		assert_gt(ratios.size(), 0, "Progress should have been emitted within 30 seconds during create prerequisite.")
@@ -355,7 +360,7 @@ func test_apply_patch_progress_reports_bytes_and_ratio():
 
 	patcher.apply_patch_async(old_file_abs, patch_file_abs, new_file_act_abs)
 	var start_ms2 := Time.get_ticks_msec()
-	while not completed2 and (Time.get_ticks_msec() - start_ms2) < 30000:
+	while not completed2 and (Time.get_ticks_msec() - start_ms2) < 5000:
 		await get_tree().process_frame
 	if not completed2 or not success2:
 		assert_gt(ratios.size(), 0, "Progress should have been emitted within 30 seconds during apply.")

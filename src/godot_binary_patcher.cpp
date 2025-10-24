@@ -33,18 +33,27 @@ void BinaryPatcher::_enter_tree() {
 }
 
 void BinaryPatcher::_process(double delta) {
-    if (Engine::get_singleton()->is_editor_hint()) {
+    // Always process even in editor/test contexts so signals are emitted during GUT runs.
+    if (!patch_thread.joinable()) {
         return;
     }
 
-    if (patch_thread.joinable()) {
-        if (patch_status.finished.load()) {
-            patch_thread.join();
-            emit_signal("finished", patch_status.success.load());
-        } else {
-            emit_signal("progress", patch_status.progress.load(), (int64_t)patch_status.bytes_done.load(), (int64_t)patch_status.bytes_total.load());
-        }
+    // If finished, emit a final progress snapshot before emitting finished, then join.
+    if (patch_status.finished.load()) {
+        emit_signal("progress",
+            patch_status.progress.load(),
+            (int64_t)patch_status.bytes_done.load(),
+            (int64_t)patch_status.bytes_total.load());
+        patch_thread.join();
+        emit_signal("finished", patch_status.success.load());
+        return;
     }
+
+    // Not finished yet: emit in-flight progress.
+    emit_signal("progress",
+        patch_status.progress.load(),
+        (int64_t)patch_status.bytes_done.load(),
+        (int64_t)patch_status.bytes_total.load());
 }
 
 void BinaryPatcher::apply_patch_async(const String& old_file, const String& patch_file, const String& new_file) {
