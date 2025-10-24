@@ -84,7 +84,7 @@ jobs:
 
       - name: Run GUT tests
         run: |
-          godot --headless -s addons/gut/gut_cmdln.gd -gdir=res://test/unit -gexit
+          godot --headless --verbose -s addons/gut/gut_cmdln.gd -gdir=res://test/unit -gexit
 
       - name: Upload test results
         if: always()
