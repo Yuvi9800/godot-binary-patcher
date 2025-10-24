@@ -211,8 +211,6 @@ jobs:
       - name: Copy addon files
         run: |
           cp addons/godot-binary-patcher/binary_patcher.gdextension package/addons/godot-binary-patcher/
-          cp addons/godot-binary-patcher/plugin.cfg package/addons/godot-binary-patcher/
-          cp addons/godot-binary-patcher/*.gd package/addons/godot-binary-patcher/ 2>/dev/null || true
 
       - name: Copy README and LICENSE
         run: |
