@@ -1,0 +1,27 @@
+name: Setup Base Dependencies
+description: Setup base dependencies
+inputs:
+  platform:
+    required: true
+    description: Target platform.
+runs:
+  using: "composite"
+  steps:
+    - name: Setup Python 3.x
+      uses: actions/setup-python@v5
+      with:
+        python-version: 3.x
+
+    - name: Setup SCons 4.4
+      shell: bash
+      run: |
+        python -c "import sys; print(sys.version)"
+        python -m pip install scons==4.4.0
+        scons --version
+
+    - name: Setup Android Dependencies
+      if: inputs.platform == 'android'
+      uses: nttld/setup-ndk@v1
+      with:
+        ndk-version: r28b
+        link-to-sdk: true
