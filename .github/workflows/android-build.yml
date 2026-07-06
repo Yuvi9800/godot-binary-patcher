@@ -5,62 +5,64 @@ on:
     branches: [ "main", "master" ]
   pull_request:
     branches: [ "main", "master" ]
-  workflow_dispatch: 
+  workflow_dispatch: # Allows manual trigger from the Actions tab
+
+env:
+  GODOT_VERSION: "4.5"
+  SCONS_CACHE_LIMIT: 7168
 
 jobs:
-  android-build:
+  build-android:
     runs-on: ubuntu-latest
+    name: Build Android (arm64)
 
     steps:
-    - name: Checkout Repository
-      uses: actions/checkout@v4
-      with:
-        submodules: recursive 
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
 
-    - name: Set up Python
-      uses: actions/setup-python@v5
-      with:
-        python-version: '3.x'
+      - name: Setup GDExtension Build Environment
+        uses: NodotProject/godot-cpp-builds@v1
+        with:
+          godot-version: '4.5-stable'
+          godot-cpp-path: './godot-cpp'
 
-    - name: Install SCons
-      run: |
-        python -m pip install --upgrade pip
-        pip install scons
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.x'
 
-    - name: Set up Android NDK
-      uses: android-actions/setup-android@v3
-      with:
-        packages: 'ndk;25.2.9519653' 
+      - name: Install SCons
+        run: pip install scons
 
-    - name: Set ANDROID_NDK_ROOT
-      run: |
-        echo "ANDROID_NDK_ROOT=${ANDROID_HOME}/ndk/25.2.9519653" >> $GITHUB_ENV
+      - name: Set up Android NDK
+        uses: android-actions/setup-android@v3
+        with:
+          packages: 'ndk;25.2.9519653' # Installs NDK r25c cleanly
 
-    - name: Compile godot-cpp Bindings (Debug)
-      run: |
-        cd godot-cpp
-        scons platform=android arch=arm64 target=template_debug
-        cd ..
+      - name: Set ANDROID_NDK_ROOT
+        run: |
+          echo "ANDROID_NDK_ROOT=${ANDROID_HOME}/ndk/25.2.9519653" >> $GITHUB_ENV
 
-    - name: Compile godot-cpp Bindings (Release)
-      run: |
-        cd godot-cpp
-        scons platform=android arch=arm64 target=template_release
-        cd ..
+      - name: Setup SCons cache
+        uses: actions/cache@v4
+        with:
+          path: |
+            ${{ github.workspace }}/.scons-cache/
+          key: android-scons-${{ hashFiles('**/*.cpp', '**/*.h') }}
+          restore-keys: |
+            android-scons-
 
-    - name: Build Binary Patcher Plugin (Debug)
-      run: |
-        scons platform=android arch=arm64 target=template_debug
+      - name: Build GDExtension
+        run: |
+          scons platform=android arch=arm64 target=template_release -j$(nproc)
+        env:
+          SCONS_CACHE: ${{ github.workspace }}/.scons-cache/
 
-    - name: Build Binary Patcher Plugin (Release)
-      run: |
-        scons platform=android arch=arm64 target=template_release
-
-    - name: Upload Android Binaries Artifact
-      uses: actions/upload-artifact@v4
-      with:
-        name: godot-binary-patcher-android-binaries
-        path: |
-          bin/
-          demo/addons/godot-binary-patcher/bin/
-        if-no-files-found: warn
+      - name: Upload Android artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: libgodot_binary_patcher-android-arm64
+          path: addons/godot-binary-patcher/bin/libgodot_binary_patcher.android.template_release.arm64.so
+          retention-days: 7
