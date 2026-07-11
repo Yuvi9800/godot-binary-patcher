@@ -36,18 +36,18 @@ jobs:
             target: template_release
             platform: windows
             arch: x86_64
-          - identifier: android-debug-arm64-v8a
-            name: Android Debug arm64-v8a
+          - identifier: android-debug-arm64
+            name: Android Debug arm64
             runner: ubuntu-22.04
             target: template_debug
             platform: android
-            arch: arm64-v8a
-          - identifier: android-release-arm64-v8a
-            name: Android Release arm64-v8a
+            arch: arm64
+          - identifier: android-release-arm64
+            name: Android Release arm64
             runner: ubuntu-22.04
             target: template_release
             platform: android
-            arch: arm64-v8a
+            arch: arm64
     steps:
       - name: (Windows) Install mingw64
         if: ${{ startsWith(matrix.identifier, 'windows-') }}
