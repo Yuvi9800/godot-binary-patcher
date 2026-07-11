@@ -102,16 +102,20 @@ jobs:
         env:
           SCONS_CACHE: '${{ github.workspace }}/.scons-cache/'
           SCONS_CACHE_LIMIT: 4096
-          # Dynamically passes the installed NDK path to Godot's build environment
-          ANDROID_NDK_ROOT: ${{ steps.setup-ndk.outputs.ndk-path }}
         run: |
+          # Define NDK path string securely to use cross-platform
+          NDK_ARGS=""
+          if [ "${{ matrix.platform }}" = "android" ]; then
+            NDK_ARGS="android_ndk_root='${{ steps.setup-ndk.outputs.ndk-path }}'"
+          fi
+
           # 1. Explicitly build godot-cpp first to generate missing headers (.hpp files)
           cd godot-cpp
-          scons target='${{ matrix.target }}' platform='${{ matrix.platform }}' arch='${{ matrix.arch }}' -j2
+          scons target='${{ matrix.target }}' platform='${{ matrix.platform }}' arch='${{ matrix.arch }}' $NDK_ARGS -j2
           cd ..
           
           # 2. Build the top level patcher extension
-          scons target='${{ matrix.target }}' platform='${{ matrix.platform }}' arch='${{ matrix.arch }}' -j2
+          scons target='${{ matrix.target }}' platform='${{ matrix.platform }}' arch='${{ matrix.arch }}' $NDK_ARGS -j2
           ls -l project/addons/*/bin/
       - name: Copy README.md and LICENSE to addon and make a new directory for artifacts
         shell: bash
