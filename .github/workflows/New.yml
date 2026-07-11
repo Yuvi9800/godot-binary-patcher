@@ -56,35 +56,40 @@ jobs:
           sudo apt-get install mingw-w64
           sudo update-alternatives --set x86_64-w64-mingw32-gcc /usr/bin/x86_64-w64-mingw32-gcc-posix
           sudo update-alternatives --set x86_64-w64-mingw32-g++ /usr/bin/x86_64-w64-mingw32-g++-posix
+
       - name: (Android) Install JDK 17
-        if: ${{ startsWith(matrix.identifier, 'android-') }}
+        if: ${{ matrix.platform == 'android' }}
         uses: actions/setup-java@v3
         with:
           java-version: 17
           distribution: temurin
+
       - name: (Android) Install Android SDK
-        if: ${{ startsWith(matrix.identifier, 'android-') }}
-        uses: android-actions/setup-android@v3
-      - name: (Android) Install NDK r23c
         if: ${{ matrix.platform == 'android' }}
-        uses: nttld/setup-ndk@v1
-        id: setup-ndk
-        with:
-          ndk-version: r23c
-          link-to-sdk: true
+        uses: android-actions/setup-android@v3
+
+      - name: (Android) Install Exact NDK Required by Godot
+        if: ${{ matrix.platform == 'android' }}
+        shell: bash
+        run: |
+          echo "y" | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --install "ndk;28.1.13356709"
+
       - name: Install Python
         uses: actions/setup-python@v2
+
       - name: Install SCons
         shell: bash
         run: |
           python -c "import sys; print(sys.version)"
           python -m pip install scons
           scons --version
+
       - name: Checkout project
         uses: actions/checkout@v4
         with:
           submodules: recursive
           fetch-depth: 0
+
       - name: Set up SCons cache
         uses: actions/cache@v3
         with:
@@ -97,26 +102,24 @@ jobs:
             ${{ matrix.identifier }}-${{ github.ref }}-${{ github.sha }}
             ${{ matrix.identifier }}-${{ github.ref }}-
             ${{ matrix.identifier }}-
+
       - name: Compile extension
         shell: bash
         env:
           SCONS_CACHE: '${{ github.workspace }}/.scons-cache/'
           SCONS_CACHE_LIMIT: 4096
+          # Godot's build scripts automatically scrape this variable for compiler path targets
+          ANDROID_NDK_ROOT: '${{ github.workspace }}/../android-sdk/ndk/28.1.13356709'
         run: |
-          # Define NDK path string securely to use cross-platform
-          NDK_ARGS=""
-          if [ "${{ matrix.platform }}" = "android" ]; then
-            NDK_ARGS="android_ndk_root='${{ steps.setup-ndk.outputs.ndk-path }}'"
-          fi
-
           # 1. Explicitly build godot-cpp first to generate missing headers (.hpp files)
           cd godot-cpp
-          scons target='${{ matrix.target }}' platform='${{ matrix.platform }}' arch='${{ matrix.arch }}' $NDK_ARGS -j2
+          scons target='${{ matrix.target }}' platform='${{ matrix.platform }}' arch='${{ matrix.arch }}' -j2
           cd ..
           
           # 2. Build the top level patcher extension
-          scons target='${{ matrix.target }}' platform='${{ matrix.platform }}' arch='${{ matrix.arch }}' $NDK_ARGS -j2
+          scons target='${{ matrix.target }}' platform='${{ matrix.platform }}' arch='${{ matrix.arch }}' -j2
           ls -l project/addons/*/bin/
+
       - name: Copy README.md and LICENSE to addon and make a new directory for artifacts
         shell: bash
         run: |
@@ -125,12 +128,14 @@ jobs:
           done
           mkdir --parents ${{ github.workspace }}/github-artifact/${{ github.event.repository.name }}-${{ github.sha }}/
           mv ${{ github.workspace }}/project/addons/ ${{ github.workspace }}/github-artifact/${{ github.event.repository.name }}-${{ github.sha }}/
+
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
           name: ${{ matrix.identifier }}
           path: |
             ${{ github.workspace }}/github-artifact
+
   merge:
     runs-on: ubuntu-22.04
     needs: build
