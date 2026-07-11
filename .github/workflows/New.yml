@@ -1,4 +1,4 @@
-name: 🛠️ Builds
+Name: 🛠️ Builds
 on:
   push:
   pull_request:
@@ -68,6 +68,7 @@ jobs:
       - name: (Android) Install NDK r23c
         if: ${{ matrix.platform == 'android' }}
         uses: nttld/setup-ndk@v1
+        id: setup-ndk
         with:
           ndk-version: r23c
           link-to-sdk: true
@@ -101,11 +102,17 @@ jobs:
         env:
           SCONS_CACHE: '${{ github.workspace }}/.scons-cache/'
           SCONS_CACHE_LIMIT: 4096
+          # Dynamically passes the installed NDK path to Godot's build environment
+          ANDROID_NDK_ROOT: ${{ steps.setup-ndk.outputs.ndk-path }}
         run: |
+          # 1. Explicitly build godot-cpp first to generate missing headers (.hpp files)
+          cd godot-cpp
+          scons target='${{ matrix.target }}' platform='${{ matrix.platform }}' arch='${{ matrix.arch }}' -j2
+          cd ..
+          
+          # 2. Build the top level patcher extension
           scons target='${{ matrix.target }}' platform='${{ matrix.platform }}' arch='${{ matrix.arch }}' -j2
           ls -l project/addons/*/bin/
-      # TODO: Replace '--no-clobber' with '--update=none' in ubuntu 24.04
-      # TODO: Workaround artifact folder structure: https://github.com/actions/upload-artifact/issues/174
       - name: Copy README.md and LICENSE to addon and make a new directory for artifacts
         shell: bash
         run: |
@@ -124,7 +131,6 @@ jobs:
     runs-on: ubuntu-22.04
     needs: build
     steps:
-      # TODO: Simplify generating artifact names. See: https://github.com/orgs/community/discussions/26686
       - name: Merge artifacts
         uses: actions/upload-artifact/merge@v4
         with:
