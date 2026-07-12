@@ -12,18 +12,6 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - identifier: linux-debug-x86_64
-            name: Linux Debug x86_64
-            runner: ubuntu-22.04
-            target: template_debug
-            platform: linux
-            arch: x86_64
-          - identifier: linux-release-x86_64
-            name: Linux Release x86_64
-            runner: ubuntu-22.04
-            target: template_release
-            platform: linux
-            arch: x86_64
           - identifier: windows-debug-x86_64
             name: Windows Debug x86_64
             runner: ubuntu-22.04
