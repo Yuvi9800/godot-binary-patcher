@@ -55,6 +55,8 @@ jobs:
       - name: (Android) Install Android SDK
         if: ${{ matrix.platform == 'android' }}
         uses: android-actions/setup-android@v3
+        with:
+          accept-android-sdk-licenses: true
 
       - name: (Android) Install Exact NDK Required by Godot
         if: ${{ matrix.platform == 'android' }}
