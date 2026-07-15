@@ -99,8 +99,11 @@ jobs:
           SCONS_CACHE: '${{ github.workspace }}/.scons-cache/'
           SCONS_CACHE_LIMIT: 4096
           # Godot's build scripts automatically scrape this variable for compiler path targets
-          ANDROID_NDK_ROOT: '${{ github.workspace }}/../android-sdk/ndk/28.1.13356709'
         run: |
+          if [ "${{ matrix.platform }}" = "android" ]; then
+            export ANDROID_NDK_ROOT="$ANDROID_HOME/ndk/28.1.13356709"
+            echo "Using ANDROID_NDK_ROOT: $ANDROID_NDK_ROOT"
+          fi
           # 1. Explicitly build godot-cpp first to generate missing headers (.hpp files)
           cd godot-cpp
           scons target='${{ matrix.target }}' platform='${{ matrix.platform }}' arch='${{ matrix.arch }}' -j2
