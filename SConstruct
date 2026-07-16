@@ -7,6 +7,9 @@ import os
 # This automatically configures Android NDK, MSVC/MinGW, macOS frameworks, and architectures.
 env = SConscript("godot-cpp/SConstruct")
 
+if env["platform"] == "android":
+    env.Append(CXXFLAGS=["-fexceptions"])
+
 # 2. Add all your custom include paths to the inherited environment
 env.Append(CPPPATH=[
     'src',
