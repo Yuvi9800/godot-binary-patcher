@@ -42,7 +42,6 @@ jobs:
         shell: sh
         run: |
           ls -l addons/godot-binary-patcher/bin/
-          rm -v addons/*.*
           cp -v '${{ github.workspace }}/README.md' '${{ github.workspace }}/LICENSE.txt' ${{ github.workspace }}/addons/godot-binary-patcher/
 
       - name: Upload Package
