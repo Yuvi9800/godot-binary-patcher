@@ -17,13 +17,13 @@ jobs:
             runner: ubuntu-22.04
             target: template_debug
             platform: android
-            arch: arm64-v8a
+            arch: arm64
           - identifier: android-release-arm64-v8a
             name: Android Release arm64-v8a
             runner: ubuntu-22.04
             target: template_release
             platform: android
-            arch: arm64-v8a
+            arch: arm64
     steps:
       - name: (Android) Install JDK 17
         if: ${{ matrix.platform == 'android' }}
@@ -87,7 +87,7 @@ jobs:
             export PATH="$NDK_TOOLCHAIN:$PATH"
           fi
 
-          if [ "${{ matrix.arch }}" = "arm64-v8a" ]; then
+          if [ "${{ matrix.arch }}" = "arm64" ]; then
            export API_LEVEL=24
            export CC="$NDK_TOOLCHAIN/aarch64-linux-android${API_LEVEL}-clang"
            export CXX="$NDK_TOOLCHAIN/aarch64-linux-android${API_LEVEL}-clang++"
