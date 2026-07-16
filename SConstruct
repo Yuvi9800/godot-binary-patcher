@@ -48,7 +48,6 @@ src_files = [
     'HDiffPatch/libHDiffPatch/HPatchLite/hpatch_lite.c',
     'HDiffPatch/dirDiffPatch/dir_diff/dir_diff_tools.cpp',
     'HDiffPatch/dirDiffPatch/dir_diff/dir_diff.cpp',
-    'HDiffPatch/dirDiffPatch/dir_manifest.cpp',
     'HDiffPatch/dirDiffPatch/dir_patch/dir_patch_tools.c',
     'HDiffPatch/dirDiffPatch/dir_patch/dir_patch.c',
     'HDiffPatch/compress_parallel.cpp',
