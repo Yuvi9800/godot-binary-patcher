@@ -41,9 +41,9 @@ jobs:
       - name: Prepare Files
         shell: sh
         run: |
-          ls -l project/addons/terrain_3d/bin/
-          rm -v project/*.*
-          cp -v '${{ github.workspace }}/README.md' '${{ github.workspace }}/LICENSE.txt' ${{ github.workspace }}/project/addons/terrain_3d/
+          ls -l addons/godot-binary-patcher/bin/
+          rm -v addons/*.*
+          cp -v '${{ github.workspace }}/README.md' '${{ github.workspace }}/LICENSE.txt' ${{ github.workspace }}/addons/godot-binary-patcher/
 
       - name: Upload Package
         uses: actions/upload-artifact@v4
