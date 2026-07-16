@@ -1,4 +1,4 @@
-name: 🤖 Android Builds
+﻿name: 🤖 Android Builds
 on: [ workflow_call, workflow_dispatch ]
 
 jobs:
@@ -36,28 +36,14 @@ jobs:
             ARCH: '${{ matrix.arch }}'
         shell: sh
         run: |
-          # 1. Point SCons to the GitHub Runner's pre-installed Android NDK
-          # GitHub Ubuntu runners store default NDKs under $ANDROID_HOME/ndk
-          # We pick the first available version dynamically
-          export ANDROID_NDK_ROOT=$(ls -d $ANDROID_HOME/ndk/* | head -n 1)
-          echo "Using Android NDK located at: $ANDROID_NDK_ROOT"
-          
-          # 2. Build/Generate godot-cpp bindings first so headers like node.hpp exist
-          if [ -d "godot-cpp" ]; then
-            cd godot-cpp
-            scons platform='${{ matrix.platform }}' target=$TARGET arch=$ARCH generate_bindings=yes -j2
-            cd ..
-          fi
-
-          # 3. Build your actual GDExtension plugin using the proper cross-compiler
           scons target=$TARGET platform='${{ matrix.platform }}' arch=$ARCH debug_symbols=no -j2
 
       - name: Prepare Files
         shell: sh
         run: |
-          ls -l addons/godot-binary-patcher/bin/ || true
-          rm -v addons/*.* || true
-          cp -v '${{ github.workspace }}/README.md' '${{ github.workspace }}/LICENSE.txt' ${{ github.workspace }}/project/addons/terrain_3d/ || true
+          ls -l project/addons/terrain_3d/bin/
+          rm -v project/*.*
+          cp -v '${{ github.workspace }}/README.md' '${{ github.workspace }}/LICENSE.txt' ${{ github.workspace }}/project/addons/terrain_3d/
 
       - name: Upload Package
         uses: actions/upload-artifact@v4
@@ -65,7 +51,7 @@ jobs:
           include-hidden-files: true
           name: t3d-${{ matrix.platform }}-${{ matrix.arch }}-${{ matrix.target }}
           path: |
-            ${{ github.workspace }}/addons/
+            ${{ github.workspace }}/project/
 
   merge:
     runs-on: ubuntu-latest
