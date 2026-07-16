@@ -19,13 +19,13 @@ target = ARGUMENTS.get('target', 'template_release')
 if platform == 'macos':
     default_arch = 'universal'
 elif platform == 'android':
-    default_arch = 'arm64-v8a'
+    default_arch = 'arm64'
 else:
     default_arch = 'x86_64'
 
 arch = ARGUMENTS.get('arch', default_arch)
 
-supported_architectures = ['x86_64', 'x86_32', 'arm64-v8a', 'armeabi-v7a']
+supported_architectures = ['x86_64', 'x86_32', 'arm64', 'arm32']
 if arch not in supported_architectures:
     print(f"ERROR: Invalid architecture '{arch}'. Supported architectures are: {', '.join(supported_architectures)}.")
     Exit(1)
@@ -56,11 +56,11 @@ if platform == 'android':
     # API 21 is minimum for Godot 4, API 24-29 is standard. Suffix aligns compiler output.
     api_version = "24" 
     
-    if arch == 'arm64-v8a':
+    if arch == 'arm64':
         cc_name = f"aarch64-linux-android{api_version}-clang"
         cxx_name = f"aarch64-linux-android{api_version}-clang++"
         ar_name = "llvm-ar"
-    elif arch == 'armeabi-v7a':
+    elif arch == 'arm32':
         cc_name = f"armv7a-linux-androideabi{api_version}-clang"
         cxx_name = f"armv7a-linux-androideabi{api_version}-clang++"
         ar_name = "llvm-ar"
