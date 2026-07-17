@@ -50,7 +50,7 @@ jobs:
           include-hidden-files: true
           name: t3d-${{ matrix.platform }}-${{ matrix.arch }}-${{ matrix.target }}
           path: |
-            ${{ github.workspace }}/project/
+            ${{ github.workspace }}/addons/
 
   merge:
     runs-on: ubuntu-latest
@@ -61,5 +61,5 @@ jobs:
         with:
           include-hidden-files: true
           name: ${{ github.event.repository.name }}
-          pattern: t3d-*
+          pattern: ${{ github.event.repository.name }}-*
           delete-merged: true
